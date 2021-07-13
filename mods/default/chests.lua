@@ -1,18 +1,32 @@
+
 default.chest = {}
 
 -- support for MT game translation.
 local S = default.get_translator
 
-function default.chest.get_chest_formspec(pos)
+function default.chest.get_chest_formspec(pos, size)
 	local spos = pos.x .. "," .. pos.y .. "," .. pos.z
-	local formspec =
-		"size[8,9]" ..
-		"list[nodemeta:" .. spos .. ";main;0,0.3;8,4;]" ..
-		"list[current_player;main;0,4.85;8,1;]" ..
-		"list[current_player;main;0,6.08;8,3;8]" ..
-		"listring[nodemeta:" .. spos .. ";main]" ..
-		"listring[current_player;main]" ..
-		default.get_hotbar_bg(0,4.85)
+	-- Find widest and highest possible combination
+	local fs_size = {
+		x = math.max(size.x, 8),
+		y = size.y + 5
+	}
+	-- Center the lists
+	local x_chest  = (fs_size.x - size.x) / 2
+	local x_player = (fs_size.x - 8) / 2
+	local formspec = (
+		"size[%i,%i]" ..
+		"list[nodemeta:%s;main;%f,0.3;%i,%i;]" ..
+		"list[current_player;main;%f,%f;8,1;]" ..
+		"list[current_player;main;%f,%f;8,3;8]" ..
+		"listring[nodemeta:%s;main]" ..
+		"listring[current_player;main]"):format(
+			fs_size.x, fs_size.y,
+			spos, x_chest, size.x, size.y,
+			x_player, size.y + 0.85,
+			x_player, size.y + 2.08,
+			spos) ..
+		default.get_hotbar_bg(x_player, 0.85 + size.y)
 	return formspec
 end
 
@@ -86,13 +100,17 @@ function default.chest.register_chest(prefixed_name, d)
 	def.legacy_facedir_simple = true
 	def.is_ground_content = false
 
+	if not def.size then
+		def.size = {x = 8, y = 4}
+	end
+
 	if def.protected then
 		def.on_construct = function(pos)
 			local meta = minetest.get_meta(pos)
 			meta:set_string("infotext", S("Locked Chest"))
 			meta:set_string("owner", "")
 			local inv = meta:get_inventory()
-			inv:set_size("main", 8*4)
+			inv:set_size("main", def.size.x*def.size.y)
 		end
 		def.after_place_node = function(pos, placer)
 			local meta = minetest.get_meta(pos)
@@ -138,7 +156,7 @@ function default.chest.register_chest(prefixed_name, d)
 			end
 			minetest.after(0.2, minetest.show_formspec,
 					clicker:get_player_name(),
-					"default:chest", default.chest.get_chest_formspec(pos))
+					"default:chest", default.chest.get_chest_formspec(pos, def.size))
 			default.chest.open_chests[clicker:get_player_name()] = { pos = pos,
 					sound = def.sound_close, swap = name }
 		end
@@ -192,7 +210,7 @@ function default.chest.register_chest(prefixed_name, d)
 			local meta = minetest.get_meta(pos)
 			meta:set_string("infotext", S("Chest"))
 			local inv = meta:get_inventory()
-			inv:set_size("main", 8*4)
+			inv:set_size("main", def.size.x*def.size.y)
 		end
 		def.can_dig = function(pos,player)
 			local meta = minetest.get_meta(pos);
@@ -209,7 +227,7 @@ function default.chest.register_chest(prefixed_name, d)
 			end
 			minetest.after(0.2, minetest.show_formspec,
 					clicker:get_player_name(),
-					"default:chest", default.chest.get_chest_formspec(pos))
+					"default:chest", default.chest.get_chest_formspec(pos, def.size))
 			default.chest.open_chests[clicker:get_player_name()] = { pos = pos,
 					sound = def.sound_close, swap = name }
 		end
